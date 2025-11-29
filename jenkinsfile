@@ -1,0 +1,47 @@
+pipeline {
+    agent any
+
+    triggers {
+        githubPush()
+    }
+
+    environment {
+        EC2_USER = "ubuntu"
+        EC2_IP   = "<13.56.156.208>"
+        SSH_KEY  = "/var/lib/jenkins/.ssh/FC-key.pem"
+        APP_DIR  = "/var/www/html"
+        REPO_URL = "https://github.com/Pramod581/static-website-project.git"
+    }
+
+    stages {
+
+        stage("Clone Repository") {
+            steps {
+                git branch: "main", url: "${REPO_URL}"
+            }
+        }
+
+        stage("Deploy to EC2") {
+            steps {
+                sh '''
+                ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$EC2_IP << EOF
+                  sudo rm -rf $APP_DIR/*
+                  sudo git clone $REPO_URL $APP_DIR
+                  sudo chown -R www-data:www-data $APP_DIR
+                  sudo chmod -R 755 $APP_DIR
+                  sudo systemctl restart nginx
+                EOF
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "✅ Website deployed successfully!"
+        }
+        failure {
+            echo "❌ Deployment failed!"
+        }
+    }
+}
