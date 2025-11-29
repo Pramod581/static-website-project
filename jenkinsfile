@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         EC2_USER = "ubuntu"
-        EC2_HOST = "13.56.156.208"       // Replace with your EC2 public IP
+        EC2_HOST = "13.56.156.208"
         SSH_KEY  = "/var/lib/jenkins/.ssh/FC-key.pem"
         WEB_ROOT = "/var/www/html"
         REPO_URL = "https://github.com/Pramod581/static-website-project.git"
@@ -26,20 +26,14 @@ pipeline {
             steps {
                 echo "🔹 Deploying website to EC2..."
                 sh """
-                ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$EC2_HOST << 'EOF'
+                ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$EC2_HOST << EOF
                     set -e
 
-                    # Make Git safe for this directory
-                    sudo git config --global --add safe.directory $WEB_ROOT
+                    # Remove old files (optional: for fresh clone)
+                    sudo rm -rf $WEB_ROOT/*
 
-                    # Pull latest code or clone if directory is empty
-                    if [ -d $WEB_ROOT/.git ]; then
-                        cd $WEB_ROOT
-                        sudo git pull
-                    else
-                        sudo rm -rf $WEB_ROOT/*
-                        sudo git clone ${REPO_URL} $WEB_ROOT
-                    fi
+                    # Clone latest code
+                    sudo git clone ${REPO_URL} $WEB_ROOT
 
                     # Set permissions
                     sudo chown -R www-data:www-data $WEB_ROOT
@@ -62,4 +56,5 @@ EOF
         }
     }
 }
+
 
