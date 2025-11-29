@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         EC2_USER = "ubuntu"
-        EC2_HOST = "13.56.156.208"
+        EC2_HOST = "13.56.156.208"        
         SSH_KEY  = "/var/lib/jenkins/.ssh/FC-key.pem"
         WEB_ROOT = "/var/www/html"
         REPO_URL = "https://github.com/Pramod581/static-website-project.git"
@@ -15,27 +15,44 @@ pipeline {
 
     stages {
 
-        stage('Checkout Code') {
+        stage('Checkout Code in Jenkins') {
             steps {
+                echo "🔹 Pulling latest code in Jenkins workspace..."
                 git branch: 'main', url: "${REPO_URL}"
             }
         }
 
         stage('Deploy to EC2') {
             steps {
+                echo "🔹 Deploying website to EC2..."
                 sh """
-                ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$EC2_HOST << EOF
+                ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$EC2_HOST << 'EOF'
                     set -e
+
+                    # Ensure /var/www/html exists and is owned by the SSH user
+                    sudo mkdir -p $WEB_ROOT
+                    sudo chown -R $USER:$USER $WEB_ROOT
+
+                    # Mark directory as safe for Git
+                    git config --global --add safe.directory $WEB_ROOT
+
+                    # Pull latest code or clone if empty
                     if [ -d $WEB_ROOT/.git ]; then
                         cd $WEB_ROOT
-                        sudo git pull
+                        git reset --hard
+                        git pull
                     else
-                        sudo git clone ${REPO_URL} $WEB_ROOT
+                        rm -rf $WEB_ROOT/*
+                        git clone ${REPO_URL} $WEB_ROOT
                     fi
+
+                    # Set permissions for web server
                     sudo chown -R www-data:www-data $WEB_ROOT
                     sudo chmod -R 755 $WEB_ROOT
+
+                    # Restart Nginx
                     sudo systemctl restart nginx
-                EOF
+EOF
                 """
             }
         }
@@ -50,3 +67,4 @@ pipeline {
         }
     }
 }
+
