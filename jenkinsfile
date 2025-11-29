@@ -1,47 +1,52 @@
 pipeline {
     agent any
 
+    environment {
+        EC2_USER = "ubuntu"
+        EC2_HOST = "13.56.156.208"
+        SSH_KEY  = "/var/lib/jenkins/.ssh/FC-key.pem"
+        WEB_ROOT = "/var/www/html"
+        REPO_URL = "https://github.com/Pramod581/static-website-project.git"
+    }
+
     triggers {
         githubPush()
     }
 
-    environment {
-        EC2_USER = "ubuntu"
-        EC2_IP   = "<13.56.156.208>"
-        SSH_KEY  = "/var/lib/jenkins/.ssh/FC-key.pem"
-        APP_DIR  = "/var/www/html"
-        REPO_URL = "https://github.com/Pramod581/static-website-project.git"
-    }
-
     stages {
 
-        stage("Clone Repository") {
+        stage('Checkout Code') {
             steps {
-                git branch: "main", url: "${REPO_URL}"
+                git branch: 'main', url: "${REPO_URL}"
             }
         }
 
-        stage("Deploy to EC2") {
+        stage('Deploy to EC2') {
             steps {
-                sh '''
-                ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$EC2_IP << EOF
-                  sudo rm -rf $APP_DIR/*
-                  sudo git clone $REPO_URL $APP_DIR
-                  sudo chown -R www-data:www-data $APP_DIR
-                  sudo chmod -R 755 $APP_DIR
-                  sudo systemctl restart nginx
+                sh """
+                ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$EC2_HOST << EOF
+                    set -e
+                    if [ -d $WEB_ROOT/.git ]; then
+                        cd $WEB_ROOT
+                        sudo git pull
+                    else
+                        sudo git clone ${REPO_URL} $WEB_ROOT
+                    fi
+                    sudo chown -R www-data:www-data $WEB_ROOT
+                    sudo chmod -R 755 $WEB_ROOT
+                    sudo systemctl restart nginx
                 EOF
-                '''
+                """
             }
         }
     }
 
     post {
         success {
-            echo "✅ Website deployed successfully!"
+            echo "✅ Deployment successful!"
         }
         failure {
-            echo "❌ Deployment failed!"
+            echo "❌ Deployment failed. Check console output."
         }
     }
 }
