@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         EC2_USER = "ubuntu"
-        EC2_HOST = "13.56.156.208"        
+        EC2_HOST = "13.56.156.208"       // Replace with your EC2 public IP
         SSH_KEY  = "/var/lib/jenkins/.ssh/FC-key.pem"
         WEB_ROOT = "/var/www/html"
         REPO_URL = "https://github.com/Pramod581/static-website-project.git"
@@ -29,24 +29,19 @@ pipeline {
                 ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$EC2_HOST << 'EOF'
                     set -e
 
-                    # Ensure /var/www/html exists and is owned by the SSH user
-                    sudo mkdir -p $WEB_ROOT
-                    sudo chown -R $USER:$USER $WEB_ROOT
+                    # Make Git safe for this directory
+                    sudo git config --global --add safe.directory $WEB_ROOT
 
-                    # Mark directory as safe for Git
-                    git config --global --add safe.directory $WEB_ROOT
-
-                    # Pull latest code or clone if empty
+                    # Pull latest code or clone if directory is empty
                     if [ -d $WEB_ROOT/.git ]; then
                         cd $WEB_ROOT
-                        git reset --hard
-                        git pull
+                        sudo git pull
                     else
-                        rm -rf $WEB_ROOT/*
-                        git clone ${REPO_URL} $WEB_ROOT
+                        sudo rm -rf $WEB_ROOT/*
+                        sudo git clone ${REPO_URL} $WEB_ROOT
                     fi
 
-                    # Set permissions for web server
+                    # Set permissions
                     sudo chown -R www-data:www-data $WEB_ROOT
                     sudo chmod -R 755 $WEB_ROOT
 
