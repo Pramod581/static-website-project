@@ -1,0 +1,8 @@
+Terraform files/.terraform/
+Terraform files/terraform.tfstate
+Terraform files/terraform.tfstate.backup
+*.exe
+Terraform files/.terraform/
+Terraform files/terraform.tfstate
+Terraform files/terraform.tfstate.backup
+*.exe
